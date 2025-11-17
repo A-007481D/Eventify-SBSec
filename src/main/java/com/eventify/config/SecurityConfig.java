@@ -30,38 +30,45 @@ public class SecurityConfig {
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final CustomAuthenticationProvider authenticationProvider;
 
+    // Public endpoints that don't require authentication
+    private static final String[] PUBLIC_ENDPOINTS = {
+        "/api/public/**",
+        "/api/auth/logout"
+    };
+
     public SecurityConfig(TokenAuthenticationFilter tokenAuthenticationFilter,
-                          CustomAuthenticationEntryPoint authenticationEntryPoint,
-                          CustomAccessDeniedHandler accessDeniedHandler,
-                          CustomAuthenticationProvider authenticationProvider) {
+                         CustomAuthenticationEntryPoint authenticationEntryPoint,
+                         CustomAccessDeniedHandler accessDeniedHandler,
+                         CustomAuthenticationProvider authenticationProvider) {
         this.tokenAuthenticationFilter = tokenAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
         this.authenticationProvider = authenticationProvider;
     }
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws  Exception{
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .authorizeHttpRequests(auth -> auth
+                // Public endpoints
+                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                
+                .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
 
-         http.csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/public/users").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/public/events").permitAll()
-                        .requestMatchers("/api/public/login").permitAll()
-
-                        .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
-
-                        .requestMatchers("/api/organizer/**").hasRole("ORGANIZER")
-
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-
-                        .anyRequest().authenticated()
-                )
-                 .authenticationProvider(authenticationProvider)
-                 .exceptionHandling(exception -> exception
-                         .authenticationEntryPoint(authenticationEntryPoint)
-                         .accessDeniedHandler(accessDeniedHandler))
-                 .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .requestMatchers("/api/organizer/**").hasRole("ORGANIZER")
+                
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
+            .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
