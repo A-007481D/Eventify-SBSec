@@ -2,6 +2,8 @@ package com.eventify.security;
 
 import com.eventify.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
@@ -10,8 +12,9 @@ import java.util.Base64;
 
 @Service
 public class TokenService {
+    private static final Logger log = LoggerFactory.getLogger(TokenService.class);
 
-    private static final String SECRET_KEY = "MySecretKey123456"; // 16 characters for AES-128
+    private static final String SECRET_KEY = "MySecretKey12345"; // 16 characters for AES-128
     private static final String ALGORITHM = "AES/ECB/PKCS5Padding";
     private final ObjectMapper objectMapper;
 
@@ -20,19 +23,26 @@ public class TokenService {
     }
 
     public String generateToken(User user) {
+        log.debug("Generating token for user: {} with role: {}", user.getEmail(), user.getRole());
         try {
             UserInfo userInfo = new UserInfo(user.getId(), user.getEmail(), user.getRole());
+            log.debug("Created UserInfo: id={}, email={}, role={}", userInfo.id, userInfo.email, userInfo.role);
+            
             String json = objectMapper.writeValueAsString(userInfo);
+            log.debug("JSON to encrypt: {}", json);
 
-            // Encrypt
             SecretKeySpec keySpec = new SecretKeySpec(SECRET_KEY.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, keySpec);
             byte[] encrypted = cipher.doFinal(json.getBytes());
-
-            return Base64.getEncoder().encodeToString(encrypted);
+            
+            String token = Base64.getEncoder().encodeToString(encrypted);
+            log.debug("Successfully generated token");
+            
+            return token;
         } catch (Exception e) {
-            throw new RuntimeException("Error generating token", e);
+            log.error("Error generating token for user {}: {}", user.getEmail(), e.getMessage(), e);
+            throw new RuntimeException("Error generating token: " + e.getMessage(), e);
         }
     }
 

@@ -91,11 +91,6 @@
             <artifactId>h2</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-        </dependency>
-        
         <!-- Jackson Java 8 date/time support -->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
