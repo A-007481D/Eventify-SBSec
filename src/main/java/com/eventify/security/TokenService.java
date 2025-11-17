@@ -1,6 +1,9 @@
 package com.eventify.security;
 
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.stereotype.Service;
 
-public class TokenService  implements UserDetailsService {
+@Service
+public class TokenService {
+
+
 }
