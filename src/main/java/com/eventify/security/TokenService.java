@@ -2,7 +2,6 @@ package com.eventify.security;
 
 import com.eventify.model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
@@ -12,17 +11,21 @@ import java.util.Base64;
 @Service
 public class TokenService {
 
-    private static final String SECRET_KEY = "MySecretKey9666";
-    private static final String ALGORITHM = "AES";
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final String SECRET_KEY = "MySecretKey123456"; // 16 characters for AES-128
+    private static final String ALGORITHM = "AES/ECB/PKCS5Padding";
+    private final ObjectMapper objectMapper;
+
+    public TokenService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     public String generateToken(User user) {
         try {
             UserInfo userInfo = new UserInfo(user.getId(), user.getEmail(), user.getRole());
-            String json = mapper.writeValueAsString(userInfo);
+            String json = objectMapper.writeValueAsString(userInfo);
 
             // Encrypt
-            SecretKeySpec keySpec = new SecretKeySpec(SECRET_KEY.getBytes(), ALGORITHM);
+            SecretKeySpec keySpec = new SecretKeySpec(SECRET_KEY.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, keySpec);
             byte[] encrypted = cipher.doFinal(json.getBytes());
@@ -33,11 +36,9 @@ public class TokenService {
         }
     }
 
-
-
     public UserInfo decryptToken(String token) {
         try {
-            SecretKeySpec keySpec = new SecretKeySpec(SECRET_KEY.getBytes(), ALGORITHM);
+            SecretKeySpec keySpec = new SecretKeySpec(SECRET_KEY.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.DECRYPT_MODE, keySpec);
 
@@ -45,28 +46,24 @@ public class TokenService {
             byte[] decrypted = cipher.doFinal(decoded);
             String json = new String(decrypted);
 
-            return mapper.readValue(json, UserInfo.class);
+            return objectMapper.readValue(json, UserInfo.class);
         } catch (Exception e) {
             return null;
         }
     }
-
 
     public static class UserInfo {
         public Long id;
         public String email;
         public String role;
 
-
         public UserInfo() {
         }
+
         public UserInfo(Long id, String email, String role) {
             this.id = id;
             this.email = email;
             this.role = role;
         }
     }
-
-
-
 }
