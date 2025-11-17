@@ -12,7 +12,7 @@ import java.util.Base64;
 @Service
 public class TokenService {
 
-    private static final String SECRET_KEY = "TO_CHANGE_LATER_USING_AES_128_16CHARS";
+    private static final String SECRET_KEY = "MySecretKey9666";
     private static final String ALGORITHM = "AES";
     private static final ObjectMapper mapper = new ObjectMapper();
 
