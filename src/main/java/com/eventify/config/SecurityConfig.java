@@ -33,12 +33,17 @@ public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINTS = {
         "/api/public/**",
         "/h2-console/**",
-        "/h2-console",
-        "/h2-console/*"
+        "/api/public/users"
     };
 
     private static final String[] AUTHENTICATED_ENDPOINTS = {
         "/api/auth/logout"
+    };
+    
+    private static final String[] SWAGGER_WHITELIST = {
+        "/v3/api-docs/**",
+        "/swagger-ui/**",
+        "/swagger-ui.html"
     };
 
     public SecurityConfig(TokenAuthenticationFilter tokenAuthenticationFilter,
@@ -59,13 +64,13 @@ public class SecurityConfig {
             )
         );
 
-        http
-            .csrf(csrf -> csrf
-                .ignoringRequestMatchers(
-                    "/h2-console/**",
-                    "/api/public/**"
-                )
+        http.csrf(csrf -> csrf
+            .ignoringRequestMatchers(
+                "/h2-console/**",
+                "/api/public/**",
+                "/api/auth/logout"
             )
+        )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
@@ -79,7 +84,7 @@ public class SecurityConfig {
                 
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
 
-                .requestMatchers("/api/organizer/**").hasRole("ORGANIZER")
+                .requestMatchers("/api/organizer/**").hasAnyRole("ORGANIZER", "ADMIN")
                 
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 

@@ -13,8 +13,7 @@ import java.util.Base64;
 @Service
 public class TokenService {
     private static final Logger log = LoggerFactory.getLogger(TokenService.class);
-
-    private static final String SECRET_KEY = "MySecretKey12345"; // 16 characters for AES-128
+    private static final String SECRET_KEY = "EventifySecretKey123456789012345"; // 32 chars for AES-256
     private static final String ALGORITHM = "AES/ECB/PKCS5Padding";
     private final ObjectMapper objectMapper;
 
@@ -48,25 +47,53 @@ public class TokenService {
     }
 
     public UserInfo decryptToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            log.warn("Attempted to decrypt null or empty token");
+            return null;
+        }
+
         try {
+            log.debug("Decrypting token: {}... (first 10 chars)", token.substring(0, Math.min(10, token.length())));
+            
             SecretKeySpec keySpec = new SecretKeySpec(SECRET_KEY.getBytes(), "AES");
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.DECRYPT_MODE, keySpec);
 
-            byte[] decoded = Base64.getDecoder().decode(token);
-            byte[] decrypted = cipher.doFinal(decoded);
+            byte[] decoded;
+            try {
+                decoded = Base64.getDecoder().decode(token);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid Base64 token: {}", e.getMessage());
+                return null;
+            }
+
+            byte[] decrypted;
+            try {
+                decrypted = cipher.doFinal(decoded);
+            } catch (Exception e) {
+                log.warn("Decryption failed: {}", e.getMessage());
+                return null;
+            }
+
+            // parse json
             String json = new String(decrypted);
-            
-            UserInfo userInfo = objectMapper.readValue(json, UserInfo.class);
-            
+            UserInfo userInfo;
+            try {
+                userInfo = objectMapper.readValue(json, UserInfo.class);
+            } catch (Exception e) {
+                log.warn("Failed to parse token JSON: {}", e.getMessage());
+                return null;
+            }
             if (userInfo.role != null && !userInfo.role.startsWith("ROLE_")) {
                 userInfo.role = "ROLE_" + userInfo.role;
                 log.debug("Added ROLE_ prefix to role: {}", userInfo.role);
             }
             
-            log.debug("Decrypted token for user: {}, role: {}", userInfo.email, userInfo.role);
+            log.debug("Successfully decrypted token for user: {}, role: {}", userInfo.email, userInfo.role);
             return userInfo;
+            
         } catch (Exception e) {
+            log.error("Unexpected error during token decryption: {}", e.getMessage(), e);
             return null;
         }
     }

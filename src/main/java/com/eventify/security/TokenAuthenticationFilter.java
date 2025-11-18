@@ -10,6 +10,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,6 +22,7 @@ import org.springframework.http.HttpStatus;
 
 @Component
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(TokenAuthenticationFilter.class);
 
     private final TokenService tokenService;
     private final CustomUserDetailsService userDetailsService;
@@ -40,39 +43,63 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         String requestURI = request.getRequestURI();
         String method = request.getMethod();
         
+        log.debug("Processing request: {} {}", method, requestURI);
+        
+        // Skip authentication for public endpoints
         if (isPublicEndpoint(requestURI, method)) {
+            log.debug("Skipping authentication for public endpoint: {}", requestURI);
             filterChain.doFilter(request, response);
             return;
         }
 
         String token = extractToken(request);
         if (token == null) {
+            log.warn("No JWT token found in request");
             SecurityContextHolder.clearContext();
             response.sendError(HttpStatus.UNAUTHORIZED.value(), "Missing or invalid authorization token");
             return;
         }
 
         try {
+            log.debug("Found JWT token in request");
+            
             if (tokenBlacklistService.isBlacklisted(token)) {
+                log.warn("Attempted to use blacklisted token");
                 throw new BadCredentialsException("Token has been invalidated");
             }
-            // Validate token
+            
+
             TokenService.UserInfo userInfo = tokenService.decryptToken(token);
             if (userInfo == null) {
+                log.warn("Failed to decrypt or validate token");
                 throw new BadCredentialsException("Invalid token");
             }
-
+            
+            log.debug("Successfully decrypted token for user: {}", userInfo.email);
+            
+            // Load user details
             UserDetails userDetails = userDetailsService.loadUserByUsername(userInfo.email);
-            // create auth token
-            UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, 
+                null,
+                userDetails.getAuthorities()
+            );
+            
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            log.debug("Successfully authenticated user: {}", userInfo.email);
             
-        } catch (Exception e) {
+        } catch (BadCredentialsException e) {
+            log.warn("Authentication failed: {}", e.getMessage());
             SecurityContextHolder.clearContext();
             response.sendError(HttpStatus.UNAUTHORIZED.value(), e.getMessage());
+            return;
+        } catch (Exception e) {
+            log.error("Unexpected error during authentication: {}", e.getMessage(), e);
+            SecurityContextHolder.clearContext();
+            response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error occurred during authentication");
             return;
         }
         
@@ -88,11 +115,14 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
     }
     
     private boolean isPublicEndpoint(String uri, String method) {
-        // Allow all public API endpoints
         if (uri.startsWith("/api/public/")) {
             return true;
         }
-
-        return uri.equals("/api/auth/logout");
+        
+        if (uri.equals("/api/auth/logout") && "POST".equalsIgnoreCase(method)) {
+            return false;
+        }
+        
+        return false;
     }
 }
