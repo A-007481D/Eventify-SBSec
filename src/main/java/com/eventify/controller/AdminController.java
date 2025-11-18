@@ -5,6 +5,7 @@ import com.eventify.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.eventify.model.User;
 
 import java.util.List;
 
@@ -29,7 +30,7 @@ public class AdminController {
     @PutMapping("/users/{id}/role")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateUserRole(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestParam String role) {
 
         if (!role.startsWith("ROLE_")) {

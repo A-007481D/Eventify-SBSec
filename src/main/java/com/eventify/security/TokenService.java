@@ -25,7 +25,8 @@ public class TokenService {
     public String generateToken(User user) {
         log.debug("Generating token for user: {} with role: {}", user.getEmail(), user.getRole());
         try {
-            UserInfo userInfo = new UserInfo(user.getId(), user.getEmail(), user.getRole());
+            String role = user.getRole().startsWith("ROLE_") ? user.getRole() : "ROLE_" + user.getRole();
+            UserInfo userInfo = new UserInfo(user.getId(), user.getEmail(), role);
             log.debug("Created UserInfo: id={}, email={}, role={}", userInfo.id, userInfo.email, userInfo.role);
             
             String json = objectMapper.writeValueAsString(userInfo);
@@ -37,7 +38,7 @@ public class TokenService {
             byte[] encrypted = cipher.doFinal(json.getBytes());
             
             String token = Base64.getEncoder().encodeToString(encrypted);
-            log.debug("Successfully generated token");
+            log.debug("Successfully generated token for user: {}, role: {}", user.getEmail(), role);
             
             return token;
         } catch (Exception e) {
@@ -55,8 +56,16 @@ public class TokenService {
             byte[] decoded = Base64.getDecoder().decode(token);
             byte[] decrypted = cipher.doFinal(decoded);
             String json = new String(decrypted);
-
-            return objectMapper.readValue(json, UserInfo.class);
+            
+            UserInfo userInfo = objectMapper.readValue(json, UserInfo.class);
+            
+            if (userInfo.role != null && !userInfo.role.startsWith("ROLE_")) {
+                userInfo.role = "ROLE_" + userInfo.role;
+                log.debug("Added ROLE_ prefix to role: {}", userInfo.role);
+            }
+            
+            log.debug("Decrypted token for user: {}, role: {}", userInfo.email, userInfo.role);
+            return userInfo;
         } catch (Exception e) {
             return null;
         }

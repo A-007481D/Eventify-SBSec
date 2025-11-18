@@ -34,10 +34,15 @@ public class CustomUserDetailsService implements UserDetailsService {
         
         log.debug("User found: {}, role: {}", user.getEmail(), user.getRole());
         
+        String role = user.getRole().startsWith("ROLE_") ?
+                     user.getRole() : "ROLE_" + user.getRole();
+        
+        log.debug("Granted authorities for {}: {}", user.getEmail(), role);
+        
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))
+                Collections.singletonList(new SimpleGrantedAuthority(role))
         );
     }
 }

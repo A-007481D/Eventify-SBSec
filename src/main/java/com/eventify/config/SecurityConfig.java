@@ -30,9 +30,14 @@ public class SecurityConfig {
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final CustomAuthenticationProvider authenticationProvider;
 
-    // Public endpoints that don't require authentication
     private static final String[] PUBLIC_ENDPOINTS = {
         "/api/public/**",
+        "/h2-console/**",
+        "/h2-console",
+        "/h2-console/*"
+    };
+
+    private static final String[] AUTHENTICATED_ENDPOINTS = {
         "/api/auth/logout"
     };
 
@@ -47,14 +52,30 @@ public class SecurityConfig {
     }
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // Enable H2 console in a frame for development
+        http.headers(headers -> headers
+            .frameOptions(frame -> frame
+                .sameOrigin()
+            )
+        );
+
         http
-            .csrf(AbstractHttpConfigurer::disable)
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers(
+                    "/h2-console/**",
+                    "/api/public/**"
+                )
+            )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints
+
+                .requestMatchers("/h2-console/**").permitAll()
+
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                
+                .requestMatchers(AUTHENTICATED_ENDPOINTS).authenticated()
                 
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
 
@@ -64,6 +85,7 @@ public class SecurityConfig {
                 
                 .anyRequest().authenticated()
             )
+            .authenticationProvider(authenticationProvider)
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(authenticationEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)

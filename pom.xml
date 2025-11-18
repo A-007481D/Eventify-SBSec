@@ -86,11 +86,6 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-        </dependency>
-
         <!-- Jackson Java 8 date/time support -->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>

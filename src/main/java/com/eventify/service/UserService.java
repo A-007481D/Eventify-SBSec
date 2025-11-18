@@ -7,6 +7,7 @@ import com.eventify.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,7 +17,6 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // Constructor injection
     public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -44,11 +44,26 @@ public class UserService {
         return userRepository.findAll();
     }
 
+//    public User updateUserRole(Long userId, String newRole) {
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+//
+//        user.setRole(newRole);
+//        return userRepository.save(user);
+//    }
+
+    @Transactional
     public User updateUserRole(Long userId, String newRole) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
-        user.setRole(newRole);
+        String roleWithPrefix = newRole.startsWith("ROLE_") ? newRole : "ROLE_" + newRole;
+
+        if (!List.of("ROLE_USER", "ROLE_ORGANIZER", "ROLE_ADMIN").contains(roleWithPrefix)) {
+            throw new IllegalArgumentException("Invalid role: " + newRole);
+        }
+
+        user.setRole(roleWithPrefix);
         return userRepository.save(user);
     }
 

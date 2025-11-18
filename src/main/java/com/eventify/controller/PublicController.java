@@ -64,11 +64,6 @@ public class PublicController {
         try {
             log.debug("Attempting to authenticate user: {}", loginRequest.getEmail());
 
-            // First, try to find the user to see if they exist
-            User user = userService.findByEmail(loginRequest.getEmail());
-            log.debug("User found in database: {}", user.getEmail());
-
-            // Then attempt authentication
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(),
@@ -76,8 +71,12 @@ public class PublicController {
                     )
             );
             log.debug("Authentication successful for user: {}", loginRequest.getEmail());
+            User user = userService.findByEmail(loginRequest.getEmail());
+            if (user == null) {
+                throw new UsernameNotFoundException("User not found after successful authentication");
+            }
+            log.debug("Retrieved user details for: {}", user.getEmail());
 
-            // Generate token
             String token = tokenService.generateToken(user);
             log.debug("Generated token for user: {}", user.getEmail());
 
