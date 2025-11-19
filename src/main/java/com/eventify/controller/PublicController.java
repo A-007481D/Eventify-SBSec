@@ -2,10 +2,14 @@ package com.eventify.controller;
 
 import com.eventify.dto.AuthResponse;
 import com.eventify.dto.ErrorResponse;
+import com.eventify.dto.EventResponseDto;
 import com.eventify.dto.LoginRequest;
 import com.eventify.dto.UserRegistrationDto;
+import com.eventify.model.Event;
 import com.eventify.model.User;
 import com.eventify.security.TokenService;
+import com.eventify.service.EventService;
+import com.eventify.service.RegistrationService;
 import com.eventify.service.UserService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -20,6 +24,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/public")
@@ -30,13 +36,19 @@ public class PublicController {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final TokenService tokenService;
+    private final EventService eventService;
+    private final RegistrationService registrationService;
 
-    public PublicController(AuthenticationManager authenticationManager, 
-                           UserService userService, 
-                           TokenService tokenService) {
+    public PublicController(AuthenticationManager authenticationManager,
+                           UserService userService,
+                           TokenService tokenService,
+                           EventService eventService,
+                           RegistrationService registrationService) {
         this.authenticationManager = authenticationManager;
         this.userService = userService;
         this.tokenService = tokenService;
+        this.eventService = eventService;
+        this.registrationService = registrationService;
     }
 
     @PostMapping("/users")
@@ -122,7 +134,14 @@ public class PublicController {
     }
 
     @GetMapping("/events")
-    public ResponseEntity<String> getPublicEvents() {
-        return ResponseEntity.ok("List of all public events - no auth required");
+    public ResponseEntity<List<EventResponseDto>> getPublicEvents() {
+        List<Event> events = eventService.getUpcomingEvents();
+        List<EventResponseDto> eventDtos = events.stream()
+                .map(event -> {
+                    long registrationCount = registrationService.getRegistrationCount(event.getId());
+                    return EventResponseDto.fromEvent(event, registrationCount);
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(eventDtos);
     }
 }
