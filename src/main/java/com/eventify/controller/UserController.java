@@ -3,12 +3,15 @@ package com.eventify.controller;
 import com.eventify.dto.ErrorResponse;
 import com.eventify.dto.EventResponseDto;
 import com.eventify.dto.RegistrationResponseDto;
+import com.eventify.dto.UserUpdateDto;
 import com.eventify.model.Event;
 import com.eventify.model.Registration;
 import com.eventify.model.User;
+import com.eventify.repository.UserRepository;
 import com.eventify.service.EventService;
 import com.eventify.service.RegistrationService;
 import com.eventify.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,13 +29,16 @@ public class UserController {
     private final UserService userService;
     private final EventService eventService;
     private final RegistrationService registrationService;
+    private final UserRepository userRepository;
 
     public UserController(UserService userService,
                          EventService eventService,
-                         RegistrationService registrationService) {
+                         RegistrationService registrationService,
+                         UserRepository userRepository) {
         this.userService = userService;
         this.eventService = eventService;
         this.registrationService = registrationService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/profile")
@@ -45,13 +51,12 @@ public class UserController {
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(
             Authentication authentication,
-            @RequestBody User updatedInfo) {
+            @Valid @RequestBody UserUpdateDto updateDto) {
 
         User currentUser = userService.findByEmail(authentication.getName());
+        currentUser.setName(updateDto.getName());
 
-        currentUser.setName(updatedInfo.getName());
-
-        User savedUser = userService.getCurrentUser();
+        User savedUser = userRepository.save(currentUser);
         savedUser.setPassword(null);
         return ResponseEntity.ok(savedUser);
     }

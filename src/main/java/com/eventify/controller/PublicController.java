@@ -52,7 +52,7 @@ public class PublicController {
     }
 
     @PostMapping("/users")
-    public ResponseEntity<?> registerUser(@RequestBody UserRegistrationDto dto) {
+    public ResponseEntity<?> registerUser(@Valid @RequestBody UserRegistrationDto dto) {
         try {
             User user = userService.registerUser(dto);
             user.setPassword(null);
@@ -71,7 +71,7 @@ public class PublicController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         log.info("Login attempt for email: {}", loginRequest.getEmail());
         try {
             log.debug("Attempting to authenticate user: {}", loginRequest.getEmail());
