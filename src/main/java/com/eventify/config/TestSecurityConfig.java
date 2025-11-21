@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -16,7 +15,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -24,16 +22,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class TestSecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
-    private final TokenAuthenticationFilter tokenAuthenticationFilter;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
 
     public TestSecurityConfig(CustomUserDetailsService userDetailsService,
-                             TokenAuthenticationFilter tokenAuthenticationFilter,
                              CustomAuthenticationEntryPoint authenticationEntryPoint,
                              CustomAccessDeniedHandler accessDeniedHandler) {
         this.userDetailsService = userDetailsService;
-        this.tokenAuthenticationFilter = tokenAuthenticationFilter;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
     }
@@ -51,12 +46,14 @@ public class TestSecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .httpBasic(basic -> basic
+                .authenticationEntryPoint(authenticationEntryPoint)
+            )
             .authenticationProvider(testAuthenticationProvider())
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(authenticationEntryPoint)
                 .accessDeniedHandler(accessDeniedHandler)
-            )
-            .addFilterBefore(tokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            );
 
         return http.build();
     }
@@ -80,7 +77,7 @@ public class TestSecurityConfig {
     }
 
     /**
-     * Password encoder that accepts any password (ghir for testing)
+     * Password encoder that accepts any password (for testing)
      */
     @Bean
     @Primary

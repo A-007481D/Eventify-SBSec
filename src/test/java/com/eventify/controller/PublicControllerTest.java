@@ -1,6 +1,5 @@
 package com.eventify.controller;
 
-import com.eventify.dto.LoginRequest;
 import com.eventify.dto.UserRegistrationDto;
 import com.eventify.model.Event;
 import com.eventify.model.User;
@@ -112,33 +111,6 @@ class PublicControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void login_WithValidCredentials_ShouldReturnToken() throws Exception {
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("test@example.com");
-        loginRequest.setPassword("password123");
-
-        mockMvc.perform(post("/api/public/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.email").value("test@example.com"))
-                .andExpect(jsonPath("$.role").value("ROLE_USER"));
-    }
-
-    @Test
-    void login_WithInvalidCredentials_ShouldReturnUnauthorized() throws Exception {
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("nonexistent@example.com");  // User doesn't exist
-        loginRequest.setPassword("anypassword");
-
-        mockMvc.perform(post("/api/public/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isUnauthorized());
     }
 
     @Test

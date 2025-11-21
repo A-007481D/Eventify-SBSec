@@ -6,7 +6,6 @@ import com.eventify.model.User;
 import com.eventify.repository.EventRepository;
 import com.eventify.repository.RegistrationRepository;
 import com.eventify.repository.UserRepository;
-import com.eventify.security.TokenService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -48,14 +48,9 @@ class OrganizerControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private TokenService tokenService;
-
     private User organizer;
     private User otherOrganizer;
     private Event testEvent;
-    private String organizerToken;
-    private String otherOrganizerToken;
 
     @BeforeEach
     void setUp() {
@@ -69,7 +64,6 @@ class OrganizerControllerTest {
         organizer.setPassword(passwordEncoder.encode("password123"));
         organizer.setRole("ROLE_ORGANIZER");
         organizer = userRepository.save(organizer);
-        organizerToken = tokenService.generateToken(organizer);
 
         otherOrganizer = new User();
         otherOrganizer.setName("Other Organizer");
@@ -77,7 +71,6 @@ class OrganizerControllerTest {
         otherOrganizer.setPassword(passwordEncoder.encode("password123"));
         otherOrganizer.setRole("ROLE_ORGANIZER");
         otherOrganizer = userRepository.save(otherOrganizer);
-        otherOrganizerToken = tokenService.generateToken(otherOrganizer);
 
         testEvent = new Event();
         testEvent.setTitle("Test Event");
@@ -92,7 +85,7 @@ class OrganizerControllerTest {
     @Test
     void getOrganizerEvents_ShouldReturnOrganizerEvents() throws Exception {
         mockMvc.perform(get("/api/organizer/events")
-                        .header("Authorization", "Bearer " + organizerToken))
+                        .with(httpBasic("organizer@example.com", "password123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Test Event"));
     }
@@ -100,7 +93,7 @@ class OrganizerControllerTest {
     @Test
     void getOrganizerEvents_WithNoEvents_ShouldReturnEmptyList() throws Exception {
         mockMvc.perform(get("/api/organizer/events")
-                        .header("Authorization", "Bearer " + otherOrganizerToken))
+                        .with(httpBasic("other@example.com", "password123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
@@ -116,7 +109,7 @@ class OrganizerControllerTest {
         eventDto.setCapacity(50);
 
         mockMvc.perform(post("/api/organizer/events")
-                        .header("Authorization", "Bearer " + organizerToken)
+                        .with(httpBasic("organizer@example.com", "password123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(eventDto)))
                 .andExpect(status().isCreated())
@@ -133,7 +126,7 @@ class OrganizerControllerTest {
         eventDto.setCapacity(50);
 
         mockMvc.perform(post("/api/organizer/events")
-                        .header("Authorization", "Bearer " + organizerToken)
+                        .with(httpBasic("organizer@example.com", "password123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(eventDto)))
                 .andExpect(status().isBadRequest());
@@ -148,7 +141,7 @@ class OrganizerControllerTest {
         eventDto.setCapacity(50);
 
         mockMvc.perform(post("/api/organizer/events")
-                        .header("Authorization", "Bearer " + organizerToken)
+                        .with(httpBasic("organizer@example.com", "password123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(eventDto)))
                 .andExpect(status().isBadRequest());
@@ -164,7 +157,7 @@ class OrganizerControllerTest {
         eventDto.setCapacity(200);
 
         mockMvc.perform(put("/api/organizer/events/" + testEvent.getId())
-                        .header("Authorization", "Bearer " + organizerToken)
+                        .with(httpBasic("organizer@example.com", "password123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(eventDto)))
                 .andExpect(status().isOk())
@@ -181,7 +174,7 @@ class OrganizerControllerTest {
         eventDto.setCapacity(200);
 
         mockMvc.perform(put("/api/organizer/events/" + testEvent.getId())
-                        .header("Authorization", "Bearer " + otherOrganizerToken)
+                        .with(httpBasic("other@example.com", "password123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(eventDto)))
                 .andExpect(status().isForbidden());
@@ -196,7 +189,7 @@ class OrganizerControllerTest {
         eventDto.setCapacity(200);
 
         mockMvc.perform(put("/api/organizer/events/99999")
-                        .header("Authorization", "Bearer " + organizerToken)
+                        .with(httpBasic("organizer@example.com", "password123"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(eventDto)))
                 .andExpect(status().isNotFound());
@@ -205,28 +198,28 @@ class OrganizerControllerTest {
     @Test
     void deleteEvent_AsOwner_ShouldDeleteEvent() throws Exception {
         mockMvc.perform(delete("/api/organizer/events/" + testEvent.getId())
-                        .header("Authorization", "Bearer " + organizerToken))
+                        .with(httpBasic("organizer@example.com", "password123")))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     void deleteEvent_AsNonOwner_ShouldReturnForbidden() throws Exception {
         mockMvc.perform(delete("/api/organizer/events/" + testEvent.getId())
-                        .header("Authorization", "Bearer " + otherOrganizerToken))
+                        .with(httpBasic("other@example.com", "password123")))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void deleteEvent_WhenNotFound_ShouldReturnNotFound() throws Exception {
         mockMvc.perform(delete("/api/organizer/events/99999")
-                        .header("Authorization", "Bearer " + organizerToken))
+                        .with(httpBasic("organizer@example.com", "password123")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void getOrganizerProfile_ShouldReturnProfile() throws Exception {
         mockMvc.perform(get("/api/organizer/profile")
-                        .header("Authorization", "Bearer " + organizerToken))
+                        .with(httpBasic("organizer@example.com", "password123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Organizer"))
                 .andExpect(jsonPath("$.email").value("organizer@example.com"));
